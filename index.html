@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WOLF LABS | TIME MASTER PRO</title>
+    
+    <!-- LIBRARIES (Não precisa baixar nada, roda direto da nuvem) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #050505; font-family: 'Lato', sans-serif; color: white; }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+        
+        /* Animações */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .slide-up { animation: slideUp 0.4s ease-out; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3498db; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- DATABASE DE QUESTÕES (30 ITENS) ---
+        const questionsDB = [
+            // BLOCO 1: READING TIME (Digital -> Classic)
+            { id: 1, type: 'quiz', q: "08:30", options: ["Eight thirteen", "Half past eight", "Quarter to eight"], a: "Half past eight", tip: "30 min = Half past." },
+            { id: 2, type: 'quiz', q: "02:15", options: ["Quarter past two", "Quarter to two", "Two fifty"], a: "Quarter past two", tip: "15 min = Quarter past." },
+            { id: 3, type: 'quiz', q: "04:45", options: ["Quarter past four", "Quarter to five", "Four forty"], a: "Quarter to five", tip: "Faltam 15 para as 5 (Quarter to)." },
+            { id: 4, type: 'quiz', q: "12:00 PM", options: ["Midnight", "Noon", "Night"], a: "Noon", tip: "12 PM é meio-dia." },
+            { id: 5, type: 'quiz', q: "09:00", options: ["Nine o'clock", "Nine zero", "Nine hour"], a: "Nine o'clock", tip: "Hora exata = O'clock." },
+            
+            // BLOCO 2: GRAMMAR (Prepositions)
+            { id: 6, type: 'quiz', q: "I wake up ____ 7:00.", options: ["in", "on", "at"], a: "at", tip: "Horas sempre usam AT." },
+            { id: 7, type: 'quiz', q: "I work ____ the morning.", options: ["at", "in", "on"], a: "in", tip: "Partes do dia usam IN (exceto night)." },
+            { id: 8, type: 'quiz', q: "I sleep ____ night.", options: ["in", "at", "on"], a: "at", tip: "Exceção: AT night." },
+            { id: 9, type: 'quiz', q: "The meeting is ____ Monday.", options: ["in", "at", "on"], a: "on", tip: "Dias da semana usam ON." },
+            { id: 10, type: 'quiz', q: "Lunch is ____ noon.", options: ["in", "on", "at"], a: "at", tip: "Noon é um horário específico (12:00), use AT." },
+
+            // BLOCO 3: SPEAKING CHALLENGE (Self-Check)
+            { id: 11, type: 'speak', q: "What time do you wake up?", model: "I wake up at [Time].", tip: "Diga a frase completa." },
+            { id: 12, type: 'speak', q: "What time do you have lunch?", model: "I have lunch at [Time].", tip: "Use 'have lunch', não 'eat lunch'." },
+            { id: 13, type: 'speak', q: "What time do you go to bed?", model: "I go to bed at [Time].", tip: "Go to bed = ir dormir." },
+            
+            // BLOCO 4: LOGIC & VOCAB
+            { id: 14, type: 'quiz', q: "10:30 (Option B)", options: ["Ten thirty", "Ten past three", "Three ten"], a: "Ten thirty", tip: "Forma digital: Apenas leia os números." },
+            { id: 15, type: 'quiz', q: "05:50", options: ["Ten to six", "Ten past five", "Fifty past five"], a: "Ten to six", tip: "Faltam 10 minutos para as 6." },
+            { id: 16, type: 'quiz', q: "Midnight is...", options: ["12:00 AM", "12:00 PM", "6:00 PM"], a: "12:00 AM", tip: "Meia-noite começa o novo dia (AM)." },
+            { id: 17, type: 'quiz', q: "AM means...", options: ["After Morning", "Morning", "Ante Meridiem"], a: "Ante Meridiem", tip: "Latim para 'Antes do Meio-dia'." },
+            { id: 18, type: 'quiz', q: "PM means...", options: ["Past Morning", "Post Meridiem", "Pre Midnight"], a: "Post Meridiem", tip: "Latim para 'Pós Meio-dia'." },
+
+            // BLOCO 5: ROUTINE
+            { id: 19, type: 'quiz', q: "He ____ up at 6:00.", options: ["wake", "wakes", "woke"], a: "wakes", tip: "He/She leva 'S' no verbo." },
+            { id: 20, type: 'quiz', q: "She ____ breakfast.", options: ["have", "has", "eat"], a: "has", tip: "She HAS." },
+            { id: 21, type: 'quiz', q: "They ____ to work.", options: ["go", "goes", "going"], a: "go", tip: "They não leva 'S'." },
+            { id: 22, type: 'quiz', q: "Do you ____ a shower?", options: ["take", "takes", "taking"], a: "take", tip: "I take / You take." },
+
+            // BLOCO 6: LISTENING SIMULATION (Read & Select)
+            { id: 23, type: 'quiz', q: "Audio Script: 'It's quarter to nine.'", options: ["08:45", "09:15", "09:45"], a: "08:45", tip: "15 para as 9." },
+            { id: 24, type: 'quiz', q: "Audio Script: 'It's half past eleven.'", options: ["11:30", "10:30", "12:30"], a: "11:30", tip: "11 e meia." },
+            { id: 25, type: 'quiz', q: "Audio Script: 'It's ten past ten.'", options: ["10:10", "10:50", "09:50"], a: "10:10", tip: "10 min passaram das 10." },
+
+            // BLOCO 7: ADVANCED SPEAKING
+            { id: 26, type: 'speak', q: "Are you usually late or on time?", model: "I am usually [late/on time].", tip: "On time = pontual." },
+            { id: 27, type: 'speak', q: "What is your favorite time of day?", model: "My favorite time is [Morning/Night].", tip: "Use 'because' para explicar se quiser." },
+            { id: 28, type: 'speak', q: "Do you use an alarm clock?", model: "Yes, I use an alarm clock.", tip: "Alarm clock = despertador." },
+            
+            // BLOCO 8: FINAL BOSS
+            { id: 29, type: 'quiz', q: "11:55", options: ["Five to twelve", "Fifty-five past eleven", "Twelve five"], a: "Five to twelve", tip: "Faltam 5 para as 12." },
+            { id: 30, type: 'quiz', q: "03:35", options: ["Twenty-five to four", "Thirty-five past three", "Three thirty-five"], a: "Twenty-five to four", tip: "Faltam 25 min para as 4." }
+        ];
+
+        // --- COMPONENTES VISUAIS ---
+        
+        const Icon = ({ name, size = 24, className }) => {
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const ProgressBar = ({ current, total }) => {
+            const percentage = ((current + 1) / total) * 100;
+            return (
+                <div className="w-full h-2 bg-[#222] rounded-full mt-4 overflow-hidden">
+                    <div className="h-full bg-[#3498db] transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                </div>
+            );
+        };
+
+        // --- APP PRINCIPAL ---
+
+        function App() {
+            const [gameState, setGameState] = useState('start'); // start, playing, finished
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [feedback, setFeedback] = useState(null); // null, correct, wrong
+            const [showSpeakingAnswer, setShowSpeakingAnswer] = useState(false);
+
+            const question = questionsDB[currentQIndex];
+
+            // Sound Effects (Simulados visualmente)
+            const handleOptionClick = (option) => {
+                if (feedback) return; // Prevent double click
+
+                if (option === question.a) {
+                    setFeedback('correct');
+                    setScore(score + 1);
+                } else {
+                    setFeedback('wrong');
+                }
+            };
+
+            const handleNext = () => {
+                setFeedback(null);
+                setShowSpeakingAnswer(false);
+                if (currentQIndex < questionsDB.length - 1) {
+                    setCurrentQIndex(currentQIndex + 1);
+                } else {
+                    setGameState('finished');
+                }
+            };
+
+            const handleSpeakReveal = () => {
+                setShowSpeakingAnswer(true);
+            };
+
+            const handleSpeakCorrect = (isCorrect) => {
+                if (isCorrect) setScore(score + 1);
+                handleNext();
+            };
+
+            return (
+                <div className="w-full max-w-[1000px] bg-[#0a0a0a] border border-[#333] rounded-3xl overflow-hidden shadow-2xl relative flex flex-col min-h-[600px] slide-up">
+                    
+                    {/* ACCENT LINE */}
+                    <div className="absolute top-[10%] right-0 w-2 h-[80%] bg-[#3498db] rounded-l-full"></div>
+
+                    {/* HEADER */}
+                    <div className="p-8 flex justify-between items-center border-b border-[#222]">
+                        <div className="font-poppins font-bold text-xl tracking-widest text-white">
+                            WOLF <span className="text-[#3498db]">LABS</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm font-mono text-gray-500">
+                            <span>SESSION 05: TIME</span>
+                            <span className="text-[#3498db]">•</span>
+                            <span>SCORE: {score}</span>
+                        </div>
+                    </div>
+
+                    {/* --- STATE: START --- */}
+                    {gameState === 'start' && (
+                        <div className="flex-grow flex flex-col items-center justify-center p-12 text-center fade-in">
+                            <div className="mb-6 p-6 rounded-full bg-[#3498db]/10">
+                                <Icon name="clock" size={64} className="text-[#3498db]" />
+                            </div>
+                            <h1 className="text-6xl font-black font-poppins mb-4">TIME MASTER <span className="text-[#3498db]">PRO</span></h1>
+                            <p className="text-gray-400 text-xl max-w-lg mb-10">30 exercises to master the clock, routine, and logic. Are you ready?</p>
+                            <button onClick={() => setGameState('playing')} className="px-10 py-4 bg-[#3498db] text-black font-bold rounded-full hover:bg-white transition-all transform hover:scale-105 flex items-center gap-2">
+                                START CHALLENGE <Icon name="arrow-right" size={20} />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* --- STATE: PLAYING --- */}
+                    {gameState === 'playing' && (
+                        <div className="flex-grow flex flex-col p-8 md:p-12 fade-in">
+                            <div className="flex justify-between items-end mb-6">
+                                <span className="text-[#3498db] font-bold text-sm tracking-widest uppercase">
+                                    Question {currentQIndex + 1} / {questionsDB.length}
+                                </span>
+                                <span className="text-xs text-gray-600 uppercase tracking-widest border border-[#333] px-2 py-1 rounded">
+                                    Type: {question.type.toUpperCase()}
+                                </span>
+                            </div>
+
+                            {/* Conteúdo da Questão */}
+                            <div className="flex-grow flex flex-col justify-center items-center mb-8">
+                                <h2 className="text-5xl md:text-7xl font-bold text-center mb-10 font-poppins">
+                                    {question.q}
+                                </h2>
+
+                                {/* TIPO: QUIZ (Multipla Escolha) */}
+                                {question.type === 'quiz' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                                        {question.options.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => handleOptionClick(opt)}
+                                                disabled={feedback !== null}
+                                                className={`p-6 rounded-xl border-2 text-lg font-bold transition-all text-center
+                                                    ${feedback === null ? 'border-[#333] hover:border-[#3498db] bg-[#111]' : ''}
+                                                    ${feedback && opt === question.a ? 'border-green-500 bg-green-500/10 text-green-500' : ''}
+                                                    ${feedback === 'wrong' && opt !== question.a && feedback !== null ? 'opacity-50' : ''}
+                                                    ${feedback === 'wrong' && opt === question.a ? 'animate-pulse' : ''}
+                                                `}
+                                            >
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* TIPO: SPEAKING (Self Check) */}
+                                {question.type === 'speak' && (
+                                    <div className="w-full max-w-2xl text-center">
+                                        {!showSpeakingAnswer ? (
+                                            <div className="flex flex-col items-center gap-6">
+                                                <div className="w-20 h-20 rounded-full bg-[#222] flex items-center justify-center animate-pulse">
+                                                    <Icon name="mic" size={40} className="text-[#3498db]" />
+                                                </div>
+                                                <p className="text-gray-400">Read the question aloud. Then check.</p>
+                                                <button onClick={handleSpeakReveal} className="px-8 py-3 border border-[#3498db] text-[#3498db] rounded-full hover:bg-[#3498db] hover:text-black transition-all font-bold">
+                                                    REVEAL ANSWER
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-[#111] p-8 rounded-2xl border border-[#333] fade-in">
+                                                <p className="text-gray-500 text-sm uppercase mb-2">Model Answer</p>
+                                                <h3 className="text-3xl font-bold text-[#3498db] mb-6">"{question.model}"</h3>
+                                                <p className="text-white mb-6">Did you say it correctly?</p>
+                                                <div className="flex gap-4 justify-center">
+                                                    <button onClick={() => handleSpeakCorrect(false)} className="px-6 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">No, I missed.</button>
+                                                    <button onClick={() => handleSpeakCorrect(true)} className="px-6 py-2 border border-green-500 text-green-500 rounded-lg hover:bg-green-500 hover:text-white transition-all">Yes, nailed it!</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* HUB DE FEEDBACK (Para Quiz) */}
+                            {feedback && question.type === 'quiz' && (
+                                <div className="bg-[#111] border-l-4 border-[#3498db] p-6 rounded-r-xl flex items-center justify-between fade-in mt-auto">
+                                    <div>
+                                        <div className={`text-xs font-bold uppercase tracking-widest mb-1 ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
+                                            {feedback === 'correct' ? 'EXCELLENT!' : 'CORRECTION NEEDED'}
+                                        </div>
+                                        <div className="text-gray-300 text-lg italic">"{question.tip}"</div>
+                                    </div>
+                                    <button onClick={handleNext} className="bg-white text-black px-6 py-3 rounded-full font-bold hover:bg-[#3498db] transition-all flex items-center gap-2">
+                                        NEXT <Icon name="arrow-right" size={18} />
+                                    </button>
+                                </div>
+                            )}
+
+                            <ProgressBar current={currentQIndex} total={questionsDB.length} />
+                        </div>
+                    )}
+
+                    {/* --- STATE: FINISHED --- */}
+                    {gameState === 'finished' && (
+                        <div className="flex-grow flex flex-col items-center justify-center p-12 text-center fade-in">
+                            <Icon name="trophy" size={80} className="text-[#3498db] mb-6" />
+                            <h2 className="text-4xl font-bold mb-2">MISSION ACCOMPLISHED</h2>
+                            <div className="text-[120px] font-black text-white leading-none mb-2 font-poppins">
+                                {Math.round((score / questionsDB.length) * 100)}%
+                            </div>
+                            <p className="text-gray-400 text-xl mb-10">
+                                You got <span className="text-[#3498db] font-bold">{score}</span> out of {questionsDB.length} correct.
+                            </p>
+                            <button onClick={() => window.location.reload()} className="px-10 py-4 border-2 border-[#333] text-white font-bold rounded-full hover:border-[#3498db] hover:text-[#3498db] transition-all flex items-center gap-2">
+                                <Icon name="rotate-ccw" size={20} /> RESTART MISSION
+                            </button>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
